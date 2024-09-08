@@ -2,46 +2,36 @@
 Using pattern-matchin callbacks to handle the variable number of input cells
 """
 
-import os
-import json
 import numpy as np
 
 from dash import Dash, dcc, html, Input, Output, State, MATCH, ALL, Patch, callback, ctx
 import dash_daq as daq
+
+from utilities import save_dict_to_json
 
 
 app = Dash()
 
 
 def convert_to_dict(arr_states):
-    airs = []
-    boxes = []
-    goals = []
+    airs = set()
+    boxes = set()
+    goals = set()
     player = (0, 0)
 
     for i in range(len(arr_states)):
         for j in range(len(arr_states[0])):
             val = arr_states[i][j]
             if val != "wall":
-                airs.append((i, j))
+                airs.add((i, j))
             if "box" in val:
-                boxes.append((i, j))
+                boxes.add((i, j))
             if "goal" in val:
-                goals.append((i, j))
+                goals.add((i, j))
             if "player" in val:
                 player = (i, j)
 
     return {"airs": airs, "boxes": boxes, "goals": goals, "player": player}
-
-
-def save_dict_to_json(d, filename):
-    try:
-        os.remove(filename)
-    except OSError:
-        pass
-
-    with open(filename, "w") as f:
-        json.dump(d, f)
 
 
 PRINTING_SYMBOLS = {
@@ -85,7 +75,7 @@ STYLE_BUTTON = {
     "height": "50px",
 }
 
-DEFAULT_STATE = "wall"
+DEFAULT_STATE = "air"
 
 
 def make_cell(i, j):

@@ -7,7 +7,7 @@ from src.data_structures import Edge, Node, BFSSolver
 
 PRINTING_SYMBOLS = {
     "wall": "█",
-    "air": "_",
+    "air": " ",
     "box": "□",
     "player": "○",
     "goal": "·",
