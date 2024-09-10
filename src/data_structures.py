@@ -3,8 +3,10 @@ FIXME need to give ways to specify how verbose of a description should be printe
 """
 
 from abc import ABC, abstractmethod
-from typing import Self
+from collections.abc import Callable
+from typing import Self, Any
 import time
+import heapq
 import numpy as np
 
 
@@ -138,6 +140,10 @@ class Queue(ABC):
         """Length of the queue"""
 
     @abstractmethod
+    def __getitem__(self, i):
+        """Getting the ith element of the queue, without modification"""
+
+    @abstractmethod
     def __iter__(self):
         """Queue iterable, without altering the queue"""
 
@@ -155,11 +161,8 @@ class Queue(ABC):
         """Pop the top path off the queue"""
 
 
-class Solver(ABC):  # pylint: disable=too-many-instance-attributes
-    """Abstract graph search solver
-    Subclass to specify the queue object
-    Does not consider path length: only attempts to find a solved node
-    """
+class Solver:  # pylint: disable=too-many-instance-attributes
+    """Graph search solver: initialize with queue object and starting node"""
 
     # starting node of the problem instance
     start_node: Node
@@ -191,16 +194,10 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
     n_revisited_sprint: int = None
     status_code = 300
 
-    @staticmethod
-    @abstractmethod
-    def get_queue_type():
-        """Subclass to specify the type of queue to use"""
-        return Queue
-
-    def __init__(self, start_node: Node):
+    def __init__(self, queue: Queue, start_node: Node):
         # initialize fields
         self.start_node = start_node
-        self.queue = self.get_queue_type()()  # pylint: disable=abstract-class-instantiated
+        self.queue = queue
         self.nodes_visited_hashes = set()
 
         # define the starting point for the search by "sniffing" the null path
@@ -208,14 +205,15 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         self.sniff(path)
 
     def __repr__(self):
-        return f"{type(self).__name__}({repr(self.start_node)})"
+        return f"{type(self).__name__}({repr(self.queue)}, {repr(self.start_node)})"
 
     def __str__(self):
         # FIXME add more info?
-        return f"{type(self).__name__} solver"
+        return f"{type(self.queue).__name__} solver"
 
     def sniff(self, path: Path):
         """ "Sniff" a path to see if it's worth exploring"""
+
         # check if we already have a solution
         if self.solved:
             return
@@ -239,6 +237,8 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
 
     def explore(self, path: Path):
         """ "Explore" a path: sniff out the results of adding on the next edges"""
+        # FIXME consider implementing path ordering tracking so priority queues can preserve it
+
         if self.solved:
             return
         for edge in path.end_node.edges:
@@ -370,20 +370,74 @@ class BFSQueue(Queue):
         """Length of the queue"""
         return len(self.queue)
 
+    def __getitem__(self, i):
+        """Getting the ith element of the queue, without modification"""
+        return self.queue[i]
+
+    def __iter__(self):
+        """Queue iterable, without altering the queue"""
+        return iter(self.queue)
+
+    def push(self, path: Path):
+        """Push a path onto the queue"""
+        self.queue.append(path)
+
     def pop(self) -> Path:
         """Pop the top path off the queue"""
         return self.queue.pop(0)
 
 
 class PriorityQueue(Queue):
-    """Priority queue"""
+    """Priority queue: initialize with priority function accepting a path
+    Uses heapq to maintain self.heap as a (min) heap
 
-    # FIXME stub
+    Elements are tuples (priority, order, path)
+        priority (Any): priority of the element, with lower values being higher priority
+            Commonly int, tuple of int, or float
+            Any priority type is allowed as long as it admits comparisons
+        order (int): increments for each element added, serving as a tiebreak to avoid comparisons on path objects
+        path (Path): the actual item being stored
+    """
 
+    # list of (priority, order, path), see docstring for explanations
+    heap: list[tuple[Any, int, Path]]
 
-class BFSSolver(Solver):
-    """Solver using a BFS queue"""
+    order: int
 
-    @staticmethod
-    def get_queue_type():
-        return BFSQueue
+    f_priority: Callable[[Path], Any]
+
+    def __init__(self, f_priority: Callable[[Path], Any]):
+        self.heap = []
+        self.order = 0
+        self.f_priority = f_priority
+
+    def __repr__(self):
+        return f"{type(self).__name__}()"
+
+    def __len__(self):
+        """Length of the queue"""
+        return len(self.heap)
+
+    def __getitem__(self, i):
+        """Getting the ith element of the queue, without modification"""
+        return self.heap[i][-1]
+
+    def __iter__(self):
+        """Queue iterable, without altering the queue"""
+        for item in self.heap:
+            yield item[-1]
+
+    def push(self, path: Path):
+        """Push a path onto the queue
+        An item with priority of just None or np.inf is discarded
+        """
+        priority = self.f_priority(path)
+        if (priority is None) or (priority == np.inf):
+            return
+        item = (priority, self.order, path)
+        heapq.heappush(self.heap, item)
+        self.order += 1
+
+    def pop(self) -> Path:
+        """Pop the top path off the queue"""
+        return heapq.heappop(self.heap)[-1]

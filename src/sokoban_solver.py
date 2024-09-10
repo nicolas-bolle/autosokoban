@@ -2,7 +2,8 @@
 
 from typing import Self
 import numpy as np
-from src.data_structures import Edge, Node, BFSSolver
+from src.data_structures import Edge, Node, Path, Solver, BFSQueue, PriorityQueue  # pylint: disable=unused-import
+from scipy.optimize import linprog
 
 
 PRINTING_SYMBOLS = {
@@ -272,5 +273,101 @@ class SokobanNode(Node):  # pylint: disable= too-many-instance-attributes
         )
 
 
-class SokobanSolver(BFSSolver):
-    """Alias for the preferred solver"""
+def f_priority_length(path: Path) -> int:
+    """Priority by the length of a path
+    A priority queue using this priority function is a BFS queue
+    """
+    return len(path)
+
+
+def f_priority_l1_naive(path: Path) -> tuple[int, int]:
+    """Priority by the sum of naive l1 distances of boxes to goals
+    Distances are naive since they may map multiple boxes to the same goal
+    """
+    priority = 0
+    for box in path.end_node.boxes:
+        dist = np.inf
+        for goal in path.end_node.goals:
+            _dist = abs(box[0] - goal[0]) + abs(box[1] - goal[1])
+            dist = min(dist, _dist)
+        priority += dist
+    return priority, f_priority_length(path)
+
+
+def f_priority_l1_symmetric_naive(path: Path) -> tuple[int, int]:
+    """Priority by the sum of naive l1 distances of boxes to goals and goals to boxes"""
+    priority = 0
+
+    for box in path.end_node.boxes:
+        dist = np.inf
+        for goal in path.end_node.goals:
+            _dist = abs(box[0] - goal[0]) + abs(box[1] - goal[1])
+            dist = min(dist, _dist)
+        priority += dist
+
+    for goal in path.end_node.goals:
+        dist = np.inf
+        for box in path.end_node.boxes:
+            _dist = abs(box[0] - goal[0]) + abs(box[1] - goal[1])
+            dist = min(dist, _dist)
+        priority += dist
+
+    return priority, f_priority_length(path)
+
+
+def optimal_transport_cost(cost_matrix: np.ndarray) -> float:
+    """Cost of the optimal transport of n sources to n targets,
+    with cost i to j given by cost_matrix[i,j]
+    For scipy.optimize.linprog, the variable x corresponds to cost_matrix.flatten()
+    """
+    assert len(cost_matrix.shape) == 2
+    assert cost_matrix.shape[0] == cost_matrix.shape[1]
+    n = len(cost_matrix)
+
+    # specify LP
+    c = cost_matrix.flatten()
+
+    A_eq = []  # pylint: disable=invalid-name
+    for i in range(n):
+        temp = np.zeros((n, n))
+        temp[i, :] = 1
+        row1 = temp.flatten()
+
+        temp = np.zeros((n, n))
+        temp[:, i] = 1
+        row2 = temp.flatten()
+
+        A_eq.extend([row1, row2])
+
+    b_eq = np.ones(2 * n)
+
+    # solve LP
+    res = linprog(c, A_eq=A_eq, b_eq=b_eq, bounds=(0, 1))
+
+    return res.fun
+
+
+def f_priority_l1_matching(path: Path) -> tuple[int, int]:
+    """Priority by the sum of l1 distances in the optimal box/goal matching
+
+    FIXME
+    1. The natural upgrade would be to use "board" distances:
+        remove all boxes but one and it have it move around the board
+    2. And after that, "push" distances:
+        remove all boxes but one and have the player push it around the board,
+        returning np.inf if the puzzle can't be solved
+    Chain heuristics: 1 is Dijkstra, and 2's subproblems can be solved using 1
+    """
+    cost_matrix = np.array(
+        [
+            [
+                abs(box[0] - goal[0]) + abs(box[1] - goal[1])
+                for box in path.end_node.boxes
+            ]
+            for goal in path.end_node.goals
+        ]
+    )
+
+    cost = optimal_transport_cost(cost_matrix)
+
+    return cost
