@@ -181,12 +181,14 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
     t_end_overall: float = None
     n_seconds_overall: int = 0
     n_iters_overall: int = 0
+    n_revisited_overall: int = 0
 
     # solver progress tracking on the current "sprint" of solving
     t_start_sprint: float = None
     t_end_sprint: float = None
     n_seconds_sprint: int = None
     n_iters_sprint: int = None
+    n_revisited_sprint: int = None
     status_code = 300
 
     @staticmethod
@@ -227,10 +229,12 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         # check if the end node of this path has been explored
         _hash = hash(path.end_node)
         if _hash in self.nodes_visited_hashes:
+            self.n_revisited_sprint += 1
+            self.n_revisited_overall += 1
             return
 
         # record a visit to the end node of this path and add it to the queue
-        self.nodes_visited_hashes.add(path)
+        self.nodes_visited_hashes.add(_hash)
         self.queue.push(path)
 
     def explore(self, path: Path):
@@ -297,6 +301,7 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
         self.t_end_sprint = None
         self.n_seconds_sprint = 0
         self.n_iters_sprint = 0
+        self.n_revisited_sprint = 0
         self.status_code = None
 
         if not self.solving_started:
@@ -306,6 +311,7 @@ class Solver(ABC):  # pylint: disable=too-many-instance-attributes
             self.t_end_overall = None
             self.n_seconds_overall = 0
             self.n_iters_overall = 0
+            self.n_revisited_overall = 0
 
         # separate fields for tracking iteration termination
         t_max = t_start + max_seconds
@@ -363,14 +369,6 @@ class BFSQueue(Queue):
     def __len__(self):
         """Length of the queue"""
         return len(self.queue)
-
-    def __iter__(self):
-        """Queue iterable, without altering the queue"""
-        return iter(self.queue)
-
-    def push(self, path: Path):
-        """Push a path onto the queue"""
-        self.queue.append(path)
 
     def pop(self) -> Path:
         """Pop the top path off the queue"""
