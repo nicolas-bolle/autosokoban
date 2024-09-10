@@ -190,8 +190,8 @@ class Solver:  # pylint: disable=too-many-instance-attributes
     t_start_sprint: float = None
     t_end_sprint: float = None
     n_seconds_sprint: int = None
-    n_iters_sprint: int = None
-    n_revisited_sprint: int = None
+    n_iters_sprint: int = 0
+    n_revisited_sprint: int = 0
     status_code = 300
 
     def __init__(self, queue: Queue, start_node: Node):
