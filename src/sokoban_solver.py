@@ -53,7 +53,11 @@ class SokobanEdge(Edge):
         x3, y3 = self.point3
 
         return (
-            (x1 + dx == x2) and (x2 + dx == x3) and (y1 + dy == y2) and (y2 + dy == y3)
+            ((dx, dy) in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+            and (x1 + dx == x2)
+            and (x2 + dx == x3)
+            and (y1 + dy == y2)
+            and (y2 + dy == y3)
         )
 
 
