@@ -7,7 +7,7 @@ import numpy as np
 from dash import Dash, dcc, html, Input, Output, State, MATCH, ALL, Patch, callback, ctx
 import dash_daq as daq
 
-from utilities import save_dict_to_json
+from boards.utilities import save_dict_to_json
 
 
 app = Dash()
