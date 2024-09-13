@@ -44,6 +44,9 @@ class SokobanEdge(Edge):
     def __str__(self):
         return f"Move {self.vector} from {self.point1} to {self.point2}"
 
+    def __hash__(self):
+        return hash((self.vector, self.point1, self.point2, self.point3))
+
     @property
     def valid(self):
         """Checking the edge we represent is valid"""

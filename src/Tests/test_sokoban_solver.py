@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
 """Unit tests for sokoban_solver.py"""
+
+# pylint: disable=protected-access
 
 import unittest
 
@@ -67,6 +70,18 @@ class TestSokobanEdge(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             SokobanEdge(vector, point1, point2, point3)
+
+    def test_hash_eq(self):
+        """Testing hashing and equality"""
+
+        edge1 = SokobanEdge((1, 0), (0, 0), (1, 0), (2, 0))
+        edge2 = SokobanEdge((1, 0), (0, 0), (1, 0), (2, 0))
+        edge3 = SokobanEdge((0, 1), (0, 0), (0, 1), (0, 2))
+
+        self.assertIsInstance(hash(edge1), int)
+        self.assertEqual(hash(edge1), hash(edge2))
+        self.assertEqual(edge1, edge2)
+        self.assertNotEqual(edge1, edge3)
 
 
 class TestSokobanNode(unittest.TestCase):
@@ -205,23 +220,92 @@ class TestSokobanNode(unittest.TestCase):
 
     def test_edges(self):
         """Testing we discover edges correctly"""
-        # FIXME
+        airs = {(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1), (0, 2), (1, 2), (2, 2)}
+        boxes = {(1, 1), (1, 2)}
+        goals = {(1, 1), (1, 2)}
+        player = (0, 0)
+
+        node = SokobanNode(airs, boxes, goals, player)
+        edges = node.edges
+
+        edge1 = SokobanEdge((1, 0), (0, 1), (1, 1), (2, 1))
+        edge2 = SokobanEdge((-1, 0), (2, 1), (1, 1), (0, 1))
+        edge3 = SokobanEdge((1, 0), (0, 2), (1, 2), (2, 2))
+        edge4 = SokobanEdge((-1, 0), (2, 2), (1, 2), (0, 2))
+
+        self.assertEqual(len(edges), 4)
+        self.assertEqual(edges[0], edge1)
+        self.assertEqual(edges[1], edge2)
+        self.assertEqual(edges[2], edge3)
+        self.assertEqual(edges[3], edge4)
 
     def test_move(self):
         """Testing movement along an edge"""
-        # FIXME
+        airs = {(0, 0), (1, 0), (2, 0)}
+        boxes = {(1, 0)}
+        goals = {(2, 0)}
+        player = (0, 0)
+
+        node_before_move = SokobanNode(airs, boxes, goals, player)
+
+        edge = SokobanEdge((1, 0), (0, 0), (1, 0), (2, 0))
+
+        airs = {(0, 0), (1, 0), (2, 0)}
+        boxes = {(2, 0)}
+        goals = {(2, 0)}
+        player = (0, 0)
+
+        node_after_move = SokobanNode(airs, boxes, goals, player)
+
+        self.assertEqual(node_before_move.move(edge), node_after_move)
+        self.assertEqual(node_before_move + edge, node_after_move)
 
     def test_unmove(self):
         """Testing unmovement along an edge"""
-        # FIXME
+        airs = {(0, 0), (1, 0), (2, 0)}
+        boxes = {(1, 0)}
+        goals = {(2, 0)}
+        player = (0, 0)
+
+        node_before_move = SokobanNode(airs, boxes, goals, player)
+
+        edge = SokobanEdge((1, 0), (0, 0), (1, 0), (2, 0))
+
+        airs = {(0, 0), (1, 0), (2, 0)}
+        boxes = {(2, 0)}
+        goals = {(2, 0)}
+        player = (0, 0)
+
+        node_after_move = SokobanNode(airs, boxes, goals, player)
+
+        self.assertEqual(node_after_move.unmove(edge), node_before_move)
+        self.assertEqual(node_after_move - edge, node_before_move)
 
     def test_check_move(self):
         """Testing move checking"""
-        # FIXME
+        airs = {(0, 0), (1, 0), (2, 0)}
+        boxes = {(1, 0)}
+        goals = {(2, 0)}
+        player = (0, 0)
+
+        node_before_move = SokobanNode(airs, boxes, goals, player)
+
+        edge = SokobanEdge((1, 0), (1, 0), (2, 0), (3, 0))
+
+        self.assertFalse(node_before_move._check_move(edge))
 
     def test_check_unmove(self):
         """Testing unmove checking"""
-        # FIXME
+        edge = SokobanEdge((1, 0), (1, 0), (2, 0), (3, 0))
+
+        airs = {(0, 0), (1, 0), (2, 0)}
+        boxes = {(2, 0)}
+        goals = {(2, 0)}
+        player = (0, 0)
+
+        node_after_move = SokobanNode(airs, boxes, goals, player)
+
+        self.assertFalse(node_after_move._check_unmove(edge))
 
 
 class TestPuzzles(unittest.TestCase):

@@ -23,6 +23,13 @@ class Edge(ABC):
     def __str__(self):
         pass
 
+    @abstractmethod
+    def __hash__(self):
+        pass
+
+    def __eq__(self, edge):
+        return hash(self) == hash(edge)
+
 
 class Node(ABC):
     """Abstract graph node"""
