@@ -1,6 +1,4 @@
-"""Data structures for graph searches
-FIXME need to give ways to specify how verbose of a description should be printed, ex. for printing a Path object
-"""
+"""Data structures for graph searches"""
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable

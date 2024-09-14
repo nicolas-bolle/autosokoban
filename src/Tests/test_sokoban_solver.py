@@ -425,6 +425,7 @@ class TestPuzzles(unittest.TestCase):
         solver = Solver(PriorityQueue(f_priority_dlsb), node)
         solver.solve(max_seconds=1)
         self.assertEqual(solver.status_code, 301)
+        # FIXME still haven't solved this one!
         # self.assertEqual(solver.n_iters_overall, 0)
         # self.assertEqual(len(solver.solution), 0)
 
