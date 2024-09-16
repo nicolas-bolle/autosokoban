@@ -4,6 +4,7 @@
 # pylint: disable=protected-access
 
 import unittest
+import numpy as np
 
 from src.Tests.boards import (
     node_trivial,
@@ -29,7 +30,7 @@ from src.sokoban_solver import (
     PriorityQueue,
 )
 
-from src.heuristics import (
+from src.heuristics import (  # pylint: disable=unused-import
     f_priority_length,
     f_priority_l1_naive,
     f_priority_l1_symmetric_naive,
@@ -37,7 +38,10 @@ from src.heuristics import (
     f_priority_dijkstra,
     f_priority_dijkstra_stuck_basic,
     f_priority_dlsb,
+    get_f_priority_sbp,
 )
+
+from src.data_structures import Path
 
 
 class TestSokobanEdge(unittest.TestCase):
@@ -428,6 +432,21 @@ class TestPuzzles(unittest.TestCase):
         # FIXME still haven't solved this one!
         # self.assertEqual(solver.n_iters_overall, 0)
         # self.assertEqual(len(solver.solution), 0)
+
+    def test_f_priority_sbp(self):
+        """Testing SBP heuristic"""
+        node = node_1_1565730199_5
+        f_priority_sbp = get_f_priority_sbp(node)
+        solver = Solver(PriorityQueue(f_priority_sbp), node)
+        solver.solve()
+        self.assertEqual(solver.status_code, 200)
+
+        # priority of the original node
+        path = Path(node, [], node)
+        self.assertEqual(f_priority_sbp(path), 12)
+
+        # distance of an impossible box/goal pair
+        self.assertEqual(f_priority_sbp.dist((0, 0), (5, 0), (0, 1)), np.inf)
 
 
 if __name__ == "__main__":

@@ -101,22 +101,9 @@ class Path:
 
     def __str__(self):
         out_list = []
-        if len(self.edges):
-            out_list.append(str(self.start_node))
-            out_list.append("")
-            out_list.append("to")
-            out_list.append("")
-            out_list.append(str(self.end_node))
-            out_list.append("")
-            out_list.append("via")
-            out_list.append("")
-            for edge in self.edges:
-                out_list.append(str(edge))
-        else:
-            out_list.append(str(self.start_node))
-            out_list.append("")
-            out_list.append("with no moves")
-        return "\n".join(out_list)
+        for node in self.nodes():
+            out_list.append(str(node))
+        return "\n\n".join(out_list)
 
     def get_str_end_node(self):
         """String for just the end node"""
@@ -124,6 +111,18 @@ class Path:
 
     def __len__(self):
         return len(self.edges)
+
+    def nodes(self):
+        """Return a list of the nodes on the path
+        Computed by applying the moves in sequences
+        """
+        node = self.start_node
+        nodes = [node]
+        for edge in self.edges:
+            node = node.move(edge)
+            nodes.append(node)
+        assert nodes[-1] == self.end_node
+        return nodes
 
 
 class Queue(ABC):

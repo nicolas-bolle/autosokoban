@@ -1,8 +1,9 @@
 """Heuristic functions for PriorityQueue"""
 
 import numpy as np
-from scipy.optimize import linprog
+from scipy.optimize import linprog, linear_sum_assignment
 
+from src.data_structures import Solver, BFSQueue
 from src.sokoban_solver import Point, Vector, SokobanEdge, SokobanNode, Path  # pylint: disable=unused-import
 
 
@@ -196,3 +197,78 @@ def f_priority_dlsb(path: Path) -> int:
         return np.inf
     d, _l = f_priority_dijkstra(path)
     return 4 * d + _l
+
+
+class SBPPriority:
+    """Single box push priority
+    Callable object instead of a function, to enable caching
+    Infinite if it's impossible to match up boxes to goals
+    Otherwise, it's the minimum number of moves necessary to do it where
+        each box is handled independently (on an otherwise blank board)
+    """
+
+    # starting node
+    node0: SokobanNode
+
+    # cache of distances, for each box + goal + player setup
+    dist_cache: dict[int, float]
+
+    def __init__(self, node: SokobanNode):
+        self.node0 = node
+        self.dist_cache = {}
+
+    def __call__(self, path: Path) -> float:
+        """Compute the priority for a given path"""
+        assert self.node0 == path.start_node
+        node = path.end_node
+
+        # cost matrix
+        cost_matrix = np.array(
+            [
+                [self.dist(box, goal, node.player) for goal in node.goals]
+                for box in node.boxes
+            ]
+        )
+
+        try:
+            # compute the minimum cost matching
+            idx, jdx = linear_sum_assignment(cost_matrix)
+
+            # return the cost
+            return cost_matrix[idx, jdx].sum()
+
+        except ValueError as e:
+            # infeasible problem: couldn't match up boxes and goals
+            assert str(e) == "cost matrix is infeasible"
+            return np.inf
+
+    def dist(self, box: Point, goal: Point, player: Point):
+        """Distance between the given box and goal, given the player location"""
+        # the node representing this distance calculation
+        node = SokobanNode(self.node0.airs, {box}, {goal}, player)
+
+        _hash = hash(node)
+        if _hash not in self.dist_cache:
+            # compute if not already computed
+            solver = Solver(BFSQueue(), node)
+            solver.solve()
+
+            # cases depending on the status code
+            match solver.status_code:
+                case 200:
+                    # success, so record appropriate distance for each node on the winning path
+                    for d, node in enumerate(reversed(solver.solution.nodes())):
+                        self.dist_cache[hash(node)] = d
+                case 400:
+                    # fail, so record infinite distance for each node visited
+                    for _sub_hash in solver.nodes_visited_hashes:
+                        self.dist_cache[_sub_hash] = np.inf
+                case _:
+                    assert False, "Unexpected status code"
+
+        return self.dist_cache[_hash]
+
+
+def get_f_priority_sbp(node: SokobanNode):
+    """Function for building the object"""
+    return SBPPriority(node)
